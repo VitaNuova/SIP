@@ -33,11 +33,10 @@ int main(int argc, const char* argv[]) {
    vector<BPatch_function*>* functions = (*app_image).getProcedures();
    int counter = 0;     
    for(BPatch_function* f: *functions) {
-      if((*f).getName() == "licenceCheck") {
+      if((*f).getName() != "main" && !(*f).isSharedLib() && (*f).isInstrumentable()) {
          cout << "Function name: " << (*f).getName() << endl;
          set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
          for(BPatch_basicBlock* bb: blocks) {
-	    if(counter == 0) {
                vector<BPatch_point*>* points;
                vector<BPatch_function*> functions;
                bool findRes = (*app_image).findFunction("main", functions);
@@ -47,9 +46,7 @@ int main(int argc, const char* argv[]) {
 	       if(res == NULL) {
                   fprintf(stderr, "Something wrong with inserting snippet\n");
 		  exit(1);
-               }
-	       counter++;
-	    }
+	       }
          }
       }
    }
