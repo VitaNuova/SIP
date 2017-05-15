@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include "mutator.h"
+#include "BBTree.cpp"
 
 using namespace Dyninst;
 using namespace std;
@@ -30,6 +31,12 @@ int main(int argc, const char* argv[]) {
    BPatch_image* app_image = (*appbin).getImage();
    //precompute_hashes(appImage);
    
+   // Build checker network
+   BBTree tree(connectivity_level);
+   
+   // Attach checkers to blocks
+   
+   // Add checker to every basic block
    vector<BPatch_function*>* functions = (*app_image).getProcedures();
    int counter = 0;     
    for(BPatch_function* f: *functions) {
@@ -37,6 +44,7 @@ int main(int argc, const char* argv[]) {
          cout << "Function name: " << (*f).getName() << endl;
          set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
          for(BPatch_basicBlock* bb: blocks) {
+        	   tree.add((*bb).getStartAddress(), (*bb).getEndAddress());
                vector<BPatch_point*>* points;
                vector<BPatch_function*> functions;
                bool findRes = (*app_image).findFunction("main", functions);
@@ -103,7 +111,8 @@ unsigned long calc_hash_sum(BPatch_basicBlock* bb) {
 
 
 BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, vector<BPatch_point*>* points) {
-   BPatch_variableExpr* start = (*appbin).malloc(*((*app_image).findType("unsigned long")));             
+   // cout << "bb start bounds: " << (*bb).getStartAddress() << ", " << (*bb).getEndAddress() <<endl;
+	BPatch_variableExpr* start = (*appbin).malloc(*((*app_image).findType("unsigned long")));             
    BPatch_variableExpr* end = (*appbin).malloc(*((*app_image).findType("unsigned long")));
    BPatch_variableExpr* hash_sum = (*appbin).malloc(*((*app_image).findType("unsigned long")));
                                                                                                        
@@ -229,5 +238,7 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
    delete arg_to_succ_printf;
    delete if_expr;
 
+   // cout << "bb end bounds: " << (*bb).getStartAddress() << ", " << (*bb).getEndAddress() <<endl;
+   
    return handle;
 }
