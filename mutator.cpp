@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 #include "mutator.h"
-#include "BBTree.cpp"
+#include "Network.cpp"
 
 using namespace Dyninst;
 using namespace std;
@@ -31,33 +31,67 @@ int main(int argc, const char* argv[]) {
    BPatch_image* app_image = (*appbin).getImage();
    //precompute_hashes(appImage);
    
-   // Build checker network
-   BBTree tree(connectivity_level);
+
    
    // Attach checkers to blocks
    
-   // Add checker to every basic block
+   // Get all functions in image
    vector<BPatch_function*>* functions = (*app_image).getProcedures();
-   int counter = 0;     
+   
+   // Store only functions to be instrumented
+   vector<BPatch_function*> checkerFunctions;
+   
+   // Store basic blocks for functions to be instrumented
+   vector<BPatch_basicBlock*> blocksToProcess;
+   
+   // Store all basic blocks to be instrumented
+   // set<BPatch_basicBlock*> blocks;
+   
+   // Build checker network
+   // Network net(functions, connectivity_level);
+   
+   // int counter = 0;     
    for(BPatch_function* f: *functions) {
-      if((*f).getName() != "main" && !(*f).isSharedLib() && (*f).isInstrumentable()) {
-         cout << "Function name: " << (*f).getName() << endl;
-         set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
-         for(BPatch_basicBlock* bb: blocks) {
-        	   tree.add((*bb).getStartAddress(), (*bb).getEndAddress());
-               vector<BPatch_point*>* points;
-               vector<BPatch_function*> functions;
-               bool findRes = (*app_image).findFunction("main", functions);
-               points = (*functions[0]).findPoint(BPatch_locEntry);    
-               
-	       BPatchSnippetHandle* res = insert_checker(app_image, appbin, bb, points); 
-	       if(res == NULL) {
-                  fprintf(stderr, "Something wrong with inserting snippet\n");
-		  exit(1);
-	       }
-         }
-      }
+
+	   if((*f).getName() != "main" && !(*f).isSharedLib() && (*f).isInstrumentable()) {
+		   // Store non-instrumentable functions to add checkers for later?
+
+
+		   cout << "Function name: " << (*f).getName() << endl;
+		   checkerFunctions.push_back(f);
+
+
+		   
+		   
+		   set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
+		   // cout << "blocks size: " << blocks.size() << endl;
+		   // blocks = get_basic_blocks(f);
+		   std::copy(blocks.begin(), blocks.end(), std::back_inserter(blocksToProcess));
+		   
+		   /*
+		   for(BPatch_basicBlock* bb: blocks) {
+			   vector<BPatch_point*>* points;
+			   vector<BPatch_function*> functions;
+			   
+			   bool findRes = (*app_image).findFunction("main", functions);
+			   points = (*functions[0]).findPoint(BPatch_locEntry);    
+
+			   BPatchSnippetHandle* res = insert_checker(app_image, appbin, bb, points); 
+			   if(res == NULL) {
+				   fprintf(stderr, "Something wrong with inserting snippet\n");
+				   exit(1);
+			   }
+		   }
+		   */
+		   
+	   }
+	   // counter++;
    }
+   
+   // Build checker network
+   Network net(&blocksToProcess, connectivity_level);
+   net.buildNetwork(app_image, appbin);
+   // cout << "blocksToProcess size: " << blocksToProcess.size() << endl;
 
    string newpath(path);
    newpath += "_instrumented";
@@ -110,7 +144,8 @@ unsigned long calc_hash_sum(BPatch_basicBlock* bb) {
 }
 
 
-BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, vector<BPatch_point*>* points) {
+// BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, vector<BPatch_point*>* points) {
+BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, BPatch_point* point) {
    // cout << "bb start bounds: " << (*bb).getStartAddress() << ", " << (*bb).getEndAddress() <<endl;
 	BPatch_variableExpr* start = (*appbin).malloc(*((*app_image).findType("unsigned long")));             
    BPatch_variableExpr* end = (*appbin).malloc(*((*app_image).findType("unsigned long")));
@@ -211,7 +246,7 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
    whole_snippet.push_back(if_expr);
    
    BPatch_sequence whole_seq(whole_snippet);
-   BPatchSnippetHandle* handle = (*appbin).insertSnippet(whole_seq, *points);  
+   BPatchSnippetHandle* handle = (*appbin).insertSnippet(whole_seq, *point); // *points  
                                                                                                    
    /*(*appbin).free(*start);
    (*appbin).free(*end);
