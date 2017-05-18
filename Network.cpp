@@ -77,11 +77,11 @@ void Network::buildNetwork(BPatch_image* image, BPatch_binaryEdit* appBinary){
 			// calc_hash_sum(root), 123456, 123456);
 	
 	
-	//BPatchSnippetHandle* res = insert_checker(image, appBinary, root, (this->blocks->at(1)->findEntryPoint())); 
+	// BPatchSnippetHandle* res = insert_checker(image, appBinary, root, (this->blocks->at(1)->findEntryPoint())); 
 	//if(res == NULL) {
-	   //fprintf(stderr, "Something wrong with inserting snippet\n");
-	   //exit(1);
-	//}
+	//   fprintf(stderr, "Something wrong with inserting snippet\n");
+	//   exit(1);
+	// }
 	
 	
 	// For all children, insert checker for parent, get start, end, hash

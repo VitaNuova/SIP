@@ -53,7 +53,7 @@ int main(int argc, const char* argv[]) {
    // int counter = 0;     
    for(BPatch_function* f: *functions) {
 
-	   if((*f).getName() != "main" && !(*f).isSharedLib() && (*f).isInstrumentable()) {
+	   if(!(*f).isSharedLib() && (*f).isInstrumentable()) {  // (*f).getName() != "main" && 
 		   // Store non-instrumentable functions to add checkers for later?
 
 
@@ -192,6 +192,32 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
       exit(0);    
    }
    BPatch_funcCallExpr* printf_call_in_while = new BPatch_funcCallExpr(*(printf_funcs[0]), args_to_printf_in_while);
+   
+   // Debug line
+   vector<BPatch_snippet*> debugPrintArgs;
+   BPatch_constExpr* debugPrintMsg = new BPatch_constExpr("~~~ Debug line was called ~~~ \n");
+   debugPrintArgs.push_back(debugPrintMsg);
+   BPatch_funcCallExpr* debugPrint = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs);
+   // ~~~~~~~~~~
+   // Debug line 2
+   vector<BPatch_snippet*> debugPrintArgs2;
+   BPatch_constExpr* debugPrintMsg2 = new BPatch_constExpr("~~~ Debug line 2 was called ~~~ \n");
+   debugPrintArgs2.push_back(debugPrintMsg2);
+   BPatch_funcCallExpr* debugPrint2 = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs2);
+   // ~~~~~~~~~~
+   // Debug line 3
+   vector<BPatch_snippet*> debugPrintArgs3;
+   BPatch_constExpr* debugPrintMsg3 = new BPatch_constExpr("~~~ Debug line 3 was called ~~~ \n");
+   debugPrintArgs3.push_back(debugPrintMsg3);
+   BPatch_funcCallExpr* debugPrint3 = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs3);
+   // ~~~~~~~~~~
+   // Debug line 4
+   vector<BPatch_snippet*> debugPrintArgs4;
+   BPatch_constExpr* debugPrintMsg4 = new BPatch_constExpr("~~~ Debug line 4 was called ~~~ \n");
+   debugPrintArgs4.push_back(debugPrintMsg4);
+   BPatch_funcCallExpr* debugPrint4 = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs4);
+   // ~~~~~~~~~~
+   
    BPatch_arithExpr* total_hash = new BPatch_arithExpr(BPatch_plus, *hash_sum, *char_value_at_addr);
    BPatch_arithExpr* assign_hash = new BPatch_arithExpr(BPatch_assign, *hash_sum, *total_hash);	   
    BPatch_arithExpr* increment_start = new BPatch_arithExpr(BPatch_plus, *start, *one_const);
@@ -233,17 +259,22 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
    BPatch_funcCallExpr printf_succ_call(*(printf_funcs[0]), args_to_succ_printf);
    
    vector<BPatch_snippet*> if_body;
-   if_body.push_back(exit_call);
+   // if_body.push_back(exit_call);
    if_body.push_back(printf_call);
+   if_body.push_back(exit_call);
    BPatch_sequence if_body_seq(if_body);
    BPatch_ifExpr* if_expr = new BPatch_ifExpr(if_condition, if_body_seq, printf_succ_call); 
    
    vector<BPatch_snippet*> whole_snippet;
+   whole_snippet.push_back(debugPrint); // Add debug line?
    whole_snippet.push_back(assign_start);
    whole_snippet.push_back(assign_end);
    whole_snippet.push_back(assign_initial_hash);
+   whole_snippet.push_back(debugPrint2); // Add debug line 2 ?
    whole_snippet.push_back(final_while);
+   whole_snippet.push_back(debugPrint3); // Add debug line 3 ?
    whole_snippet.push_back(if_expr);
+   whole_snippet.push_back(debugPrint4); // Add debug line 4 ?
    
    BPatch_sequence whole_seq(whole_snippet);
    BPatchSnippetHandle* handle = (*appbin).insertSnippet(whole_seq, *point); // *points  
