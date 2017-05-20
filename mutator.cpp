@@ -29,72 +29,31 @@ int main(int argc, const char* argv[]) {
    }
  
    BPatch_image* app_image = (*appbin).getImage();
-   //precompute_hashes(appImage);
-   
-
-   
-   // Attach checkers to blocks
    
    // Get all functions in image
    vector<BPatch_function*>* functions = (*app_image).getProcedures();
    
-   // Store only functions to be instrumented
-   vector<BPatch_function*> checkerFunctions;
-   
    // Store basic blocks for functions to be instrumented
    vector<BPatch_basicBlock*> blocksToProcess;
-   
-   // Store all basic blocks to be instrumented
-   // set<BPatch_basicBlock*> blocks;
-   
-   // Build checker network
-   // Network net(functions, connectivity_level);
-   
-   // int counter = 0;     
+        
    for(BPatch_function* f: *functions) {
 
 	   if(!(*f).isSharedLib() && (*f).isInstrumentable()) {  // (*f).getName() != "main" && 
 		   // Store non-instrumentable functions to add checkers for later?
 
-
 		   cout << "Function name: " << (*f).getName() << endl;
-		   checkerFunctions.push_back(f);
-
-
-		   
-		   
+   
 		   set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
-		   // cout << "blocks size: " << blocks.size() << endl;
-		   // blocks = get_basic_blocks(f);
-		   std::copy(blocks.begin(), blocks.end(), std::back_inserter(blocksToProcess));
-		   
-		   /*
-		   for(BPatch_basicBlock* bb: blocks) {
-			   vector<BPatch_point*>* points;
-			   vector<BPatch_function*> functions;
-			   
-			   bool findRes = (*app_image).findFunction("main", functions);
-			   points = (*functions[0]).findPoint(BPatch_locEntry);    
-
-			   BPatchSnippetHandle* res = insert_checker(app_image, appbin, bb, points); 
-			   if(res == NULL) {
-				   fprintf(stderr, "Something wrong with inserting snippet\n");
-				   exit(1);
-			   }
-		   }
-		   */
-		   
+		   std::copy(blocks.begin(), blocks.end(), std::back_inserter(blocksToProcess));	  		   
 	   }
-	   // counter++;
    }
    
    // Build checker network
    Network net(&blocksToProcess, connectivity_level);
    net.buildNetwork(app_image, appbin);
-   // cout << "blocksToProcess size: " << blocksToProcess.size() << endl;
 
    string newpath(path);
-   newpath += "_instrumented";
+   newpath += "_instrumented2";
    bool result = (*appbin).writeFile(newpath.c_str());
    if(!result) {
       fprintf(stderr, "Writing file to disk failed.\n");
@@ -144,7 +103,6 @@ unsigned long calc_hash_sum(BPatch_basicBlock* bb) {
 }
 
 
-// BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, vector<BPatch_point*>* points) {
 BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, BPatch_point* point) {
    // cout << "bb start bounds: " << (*bb).getStartAddress() << ", " << (*bb).getEndAddress() <<endl;
 	BPatch_variableExpr* start = (*appbin).malloc(*((*app_image).findType("unsigned long")));             
