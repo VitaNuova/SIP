@@ -34,12 +34,7 @@ int main(int argc, const char* argv[]) {
    }
  
    BPatch_image* app_image = (*appbin).getImage();
-   //precompute_hashes(appImage);
-   
 
-   
-   // Attach checkers to blocks
-   
    // Get all functions in image
    vector<BPatch_function*>* functions = (*app_image).getProcedures();
    
@@ -48,48 +43,19 @@ int main(int argc, const char* argv[]) {
    
    // Store basic blocks for functions to be instrumented
    vector<BPatch_basicBlock*> blocksToProcess;
-   
-   // Store all basic blocks to be instrumented
-   // set<BPatch_basicBlock*> blocks;
-   
-   // Build checker network
-   // Network net(functions, connectivity_level);
-   
-   // int counter = 0;     
+
    for(BPatch_function* f: *functions) {
-
-	   if(!(*f).isSharedLib() && (*f).isInstrumentable()) /* && (*f).getName() == "licenceCheck")*/ {
-		   // Store non-instrumentable functions to add checkers for later?
-
-		   cout << "Function name: " << (*f).getName() << endl;
-		   checkerFunctions.push_back(f);
-		   
-		   set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
-		   // cout << "blocks size: " << blocks.size() << endl;
-		   // blocks = get_basic_blocks(f);
-		   std::copy(blocks.begin(), blocks.end(), std::back_inserter(blocksToProcess));
-		     
-		   /*for(BPatch_basicBlock* bb: blocks) {
-			 vector<BPatch_point*>* points;
-			 vector<BPatch_function*> functions;
-			   
-			 bool findRes = (*app_image).findFunction("main", functions);
-			 points = (*functions[0]).findPoint(BPatch_locEntry);    
-
-			 BPatchSnippetHandle* res = insert_checker(app_image, appbin, bb, points); 
-			 if(res == NULL) {
-			    fprintf(stderr, "Something wrong with inserting snippet\n");
-			    exit(1);
-			 }
-		   }*/
-	   }
-	   // counter++;
+	if(!(*f).isSharedLib() && (*f).isInstrumentable()) {
+	   cout << "Function name: " << (*f).getName() << endl;
+	   checkerFunctions.push_back(f);  
+	   set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
+	   std::copy(blocks.begin(), blocks.end(), std::back_inserter(blocksToProcess));
+	}
    }
    
    // Build checker network
    Network net(&blocksToProcess, connectivity_level);
    net.buildNetwork(app_image, appbin);
-   // cout << "blocksToProcess size: " << blocksToProcess.size() << endl;
 
    string newpath(path);
    newpath += "_instrumented";
@@ -106,22 +72,6 @@ set<BPatch_basicBlock*> get_basic_blocks(BPatch_function* f) {
    set<BPatch_basicBlock*> blocks;   
    (*fg).getAllBasicBlocks(blocks);
 return blocks;
-}
-
-
-void precompute_hashes(BPatch_image* app_image) {   
-   vector<BPatch_function*>* functions = (*app_image).getProcedures();     
-   for(BPatch_function* f: *functions) {
-      cout << "Function name: " << (*f).getName() << endl;
-      set<BPatch_basicBlock*> blocks = get_basic_blocks(f);
-      unsigned int hashsum_bb = 0;
-      for(BPatch_basicBlock* bb: blocks) {
-	 printf("Start address %x\n", (*bb).getStartAddress());
-	 printf("End address %x\n", (*bb).getEndAddress());
-         hashsum_bb = calc_hash_sum(bb);
-         printf("Sum of bytes in the binary of basic block: %x\n", hashsum_bb);
-      }
-   }
 }
 
 unsigned long calc_hash_sum(BPatch_basicBlock* bb) {
@@ -141,20 +91,9 @@ unsigned long calc_hash_sum(BPatch_basicBlock* bb) {
    return hashsum_bb;
 }
 
-
-//BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, vector<BPatch_point*>* points) {
 BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* appbin, BPatch_basicBlock* bb, BPatch_point* point) {
-   // cout << "bb start bounds: " << (*bb).getStartAddress() << ", " << (*bb).getEndAddress() <<endl;
    
    int hash_choice = rand() % 2;
-
-   //int expected_hash_val = calc_hash_sum(bb);
-   //printf("Start address %x. End address %x.\n", (*bb).getStartAddress(), (*bb).getEndAddress());
-   //if(hash_choice == 0) {
-   //   printf("Expected hash %x. Using single summation for this block.\n", expected_hash_val);
-   //} else {
-     // printf("Expected hash %x. Using double summation for this block.\n", 2 * expected_hash_val);
-   //}
 
    BPatch_variableExpr* start = (*appbin).malloc(*((*app_image).findType("unsigned long")));             
    BPatch_variableExpr* end = (*appbin).malloc(*((*app_image).findType("unsigned long")));
@@ -170,7 +109,6 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
    BPatch_arithExpr* assign_initial_hash = new BPatch_arithExpr(BPatch_assign, *hash_sum, hash_const);
 
    BPatch_boolExpr while_condition(BPatch_ne, *start, *end);
-                                                                                                                            
    BPatch_variableExpr* char_at_start = (*appbin).malloc(*((*app_image).findType("unsigned char")));
    BPatch_arithExpr* char_at_start_pointer = new BPatch_arithExpr(BPatch_addr, *char_at_start);
    
@@ -180,19 +118,12 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
       fprintf(stderr, "Could not find memcpy");
       exit(0);    
    }
-                                                                                                                            
    vector<BPatch_snippet*> args_to_memcpy;
    args_to_memcpy.push_back(char_at_start_pointer);
    args_to_memcpy.push_back(start);
    args_to_memcpy.push_back(one_const);
    BPatch_funcCallExpr* memcpy_call = new BPatch_funcCallExpr(*(memcpy_funcs[0]), args_to_memcpy);
    BPatch_arithExpr* char_value_at_addr = new BPatch_arithExpr(BPatch_deref, *char_at_start_pointer); 
-                                                                                                                            
-   vector<BPatch_snippet*> args_to_printf_in_while; 
-   BPatch_constExpr* arg_to_printf_in_while = new BPatch_constExpr("Current start %x. Current val in char at start %x.\n");
-   args_to_printf_in_while.push_back(arg_to_printf_in_while);
-   args_to_printf_in_while.push_back(start);
-   args_to_printf_in_while.push_back(char_value_at_addr);
                                                                                                                      
    vector<BPatch_function*> printf_funcs;
    (*app_image).findFunction("printf", printf_funcs);
@@ -200,32 +131,7 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
       fprintf(stderr, "Could not find printf");
       exit(0);    
    }
-   BPatch_funcCallExpr* printf_call_in_while = new BPatch_funcCallExpr(*(printf_funcs[0]), args_to_printf_in_while);
    
-   // Debug line
-   vector<BPatch_snippet*> debugPrintArgs;
-   BPatch_constExpr* debugPrintMsg = new BPatch_constExpr("~~~ Debug line was called ~~~ \n");
-   debugPrintArgs.push_back(debugPrintMsg);
-   BPatch_funcCallExpr* debugPrint = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs);
-   // ~~~~~~~~~~
-   // Debug line 2
-   vector<BPatch_snippet*> debugPrintArgs2;
-   BPatch_constExpr* debugPrintMsg2 = new BPatch_constExpr("~~~ Debug line 2 was called ~~~ \n");
-   debugPrintArgs2.push_back(debugPrintMsg2);
-   BPatch_funcCallExpr* debugPrint2 = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs2);
-   // ~~~~~~~~~~
-   // Debug line 3
-   vector<BPatch_snippet*> debugPrintArgs3;
-   BPatch_constExpr* debugPrintMsg3 = new BPatch_constExpr("~~~ Debug line 3 was called ~~~ \n");
-   debugPrintArgs3.push_back(debugPrintMsg3);
-   BPatch_funcCallExpr* debugPrint3 = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs3);
-   // ~~~~~~~~~~
-   // Debug line 4
-   vector<BPatch_snippet*> debugPrintArgs4;
-   BPatch_constExpr* debugPrintMsg4 = new BPatch_constExpr("~~~ Debug line 4 was called ~~~ \n");
-   debugPrintArgs4.push_back(debugPrintMsg4);
-   BPatch_funcCallExpr* debugPrint4 = new BPatch_funcCallExpr(*(printf_funcs[0]), debugPrintArgs4);
-   // ~~~~~~~~~~
    BPatch_arithExpr* total_hash;
    if(hash_choice == 0) {
    	total_hash = new BPatch_arithExpr(BPatch_plus, *hash_sum, *char_value_at_addr);
@@ -240,7 +146,6 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
 
    vector<BPatch_snippet*> while_items;
    while_items.push_back(memcpy_call);
-   //while_items.push_back(printf_call_in_while);
    while_items.push_back(total_hash);
    while_items.push_back(assign_hash);
    while_items.push_back(increment_start);
@@ -279,31 +184,21 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
    BPatch_funcCallExpr printf_succ_call(*(printf_funcs[0]), args_to_succ_printf);
    
    vector<BPatch_snippet*> if_body;
-  // if_body.push_back(exit_call);
    if_body.push_back(printf_call);
    if_body.push_back(exit_call);
    BPatch_sequence if_body_seq(if_body);
    BPatch_ifExpr* if_expr = new BPatch_ifExpr(if_condition, if_body_seq, printf_succ_call); 
    
    vector<BPatch_snippet*> whole_snippet;
-   //whole_snippet.push_back(debugPrint); // Add debug line?
    whole_snippet.push_back(assign_start);
    whole_snippet.push_back(assign_end);
    whole_snippet.push_back(assign_initial_hash);
-   //whole_snippet.push_back(debugPrint2); // Add debug line 2 ?
    whole_snippet.push_back(final_while);
-   //whole_snippet.push_back(debugPrint3); // Add debug line 3 ?
    whole_snippet.push_back(if_expr);
-   //whole_snippet.push_back(debugPrint4); // Add debug line 4 ?
    
    BPatch_sequence whole_seq(whole_snippet);
-   BPatchSnippetHandle* handle = (*appbin).insertSnippet(whole_seq, *point);// *points);  
+   BPatchSnippetHandle* handle = (*appbin).insertSnippet(whole_seq, *point);  
                                                                                                   
-   /*(*appbin).free(*start);
-   (*appbin).free(*end);
-   (*appbin).free(*hash_sum);
-   (*appbin).free(*char_at_start);*/
-                                                                                                 
    delete assign_start;
    delete assign_end;
    delete assign_initial_hash;
@@ -311,8 +206,6 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
    delete memcpy_call;
    delete char_at_start_pointer;
    delete char_value_at_addr;
-   delete arg_to_printf_in_while;
-   delete printf_call_in_while;
    delete total_hash;
    delete assign_hash;
    delete increment_start;
@@ -325,7 +218,5 @@ BPatchSnippetHandle* insert_checker(BPatch_image* app_image, BPatch_binaryEdit* 
    delete if_expr;
    delete expected_hash;
 
-   // cout << "bb end bounds: " << (*bb).getStartAddress() << ", " << (*bb).getEndAddress() <<endl;
-   
    return handle;
 }
